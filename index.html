@@ -1400,17 +1400,54 @@ function removeFavoriteByName(name) {
 function searchVideos(keyword) {
   if (!keyword || !keyword.trim()) return;
   keyword = keyword.trim();
+
   var mode = getConnMode();
+
+  // 1. 完全没选连接方式时，才提示去设置
   if (mode === '') {
     showToast('请先在设置中选择连接方式（直连/代理）');
     openSettings();
     return;
   }
+
+  // 2. 只有选了“代理”但没保存代理地址时，才提示配置代理
   if (mode === 'proxy' && (!CORS_PROXIES || CORS_PROXIES.length === 0)) {
     showToast('请先在设置中配置代理服务器');
     openSettings();
     return;
   }
+
+  // 3. 直连模式直接放行，走 fetchJson 直连请求
+  document.getElementById('searchInput').value = keyword;
+
+  if (!State.isSearchView) {
+    saveHomeView();
+    State.isSearchView = true;
+    pushView('search');
+  }
+
+  var view = document.getElementById('mainContent');
+  view.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:12px">搜索 "' + keyword + '" 中...</p></div>';
+
+  State.searchResults = {};
+  var sources = State.settings.sources, completed = 0, total = sources.length;
+
+  sources.forEach(function(source) {
+    var apiUrl = source.url + '?ac=videolist&wd=' + encodeURIComponent(keyword);
+    fetchJson(apiUrl, function(data) {
+      if (data && data.list && data.list.length > 0) {
+        State.searchResults[source.name] = { list: data.list, url: source.url };
+      }
+      completed++;
+      if (completed >= total) renderSearchResults(keyword);
+      else updateSearchProgress(keyword, completed, total);
+    }, function(e) {
+      completed++;
+      if (completed >= total) renderSearchResults(keyword);
+      else updateSearchProgress(keyword, completed, total);
+    }, 10000);
+  });
+}
   document.getElementById('searchInput').value = keyword;
   if (!State.isSearchView) { saveHomeView(); State.isSearchView = true; pushView('search'); }
   var view = document.getElementById('mainContent');
