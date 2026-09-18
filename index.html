@@ -1400,7 +1400,13 @@ function removeFavoriteByName(name) {
 function searchVideos(keyword) {
   if (!keyword || !keyword.trim()) return;
   keyword = keyword.trim();
-  if (!CORS_PROXIES || CORS_PROXIES.length === 0) {
+  var mode = getConnMode();
+  if (mode === '') {
+    showToast('请先在设置中选择连接方式（直连/代理）');
+    openSettings();
+    return;
+  }
+  if (mode === 'proxy' && (!CORS_PROXIES || CORS_PROXIES.length === 0)) {
     showToast('请先在设置中配置代理服务器');
     openSettings();
     return;
